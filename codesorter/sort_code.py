@@ -1,9 +1,3 @@
-# libcst's matcher API (matches/findall/extractall) and CST node unions are only
-# partially typed, so values flowing out of them surface as Unknown/Any under strict
-# pyright. These suppressions scope that library-boundary noise to this module; the
-# rest of the package type-checks cleanly under strict mode.
-# pyright: reportAttributeAccessIssue=false, reportArgumentType=false, reportAssignmentType=false, reportCallIssue=false, reportOperatorIssue=false
-# pyright: reportUnknownArgumentType=false, reportUnknownMemberType=false, reportUnknownParameterType=false, reportUnknownVariableType=false, reportMissingTypeArgument=false
 """The SortCodeCommand libcst codemod that reorders classes, methods, and functions."""
 
 from __future__ import annotations
@@ -11,29 +5,25 @@ from __future__ import annotations
 import enum
 from collections import defaultdict
 from enum import auto
-from typing import TYPE_CHECKING
 
 import libcst as cst
 from libcst import matchers as m
 from libcst import metadata as md
 from libcst.codemod import CodemodContext, VisitorBasedCodemodCommand
 
-if TYPE_CHECKING:
-    from libcst.metadata import Scope
-
 _PROPERTY_DECORATOR_PARTS = 2
 _PLAIN_DECORATOR_PARTS = 1
 
 
-def _gen_unique_name(node: cst.BaseStatement | cst.ClassDef | cst.FunctionDef) -> str:
+def _gen_unique_name(node: cst.ClassDef | cst.FunctionDef) -> str:
     parts = [node.name.value]
-    if m.matches(node, m.ClassDef()):
-        for item in node.bases + node.decorators + node.keywords:
-            for name in m.findall(item, m.Name()):
-                parts.append(name.value)
-    elif m.matches(node, m.FunctionDef()):
-        for name in m.findall(node, m.Name()):
-            parts.append(name.value)
+    if isinstance(node, cst.ClassDef):
+        items: tuple[cst.CSTNode, ...] = (*node.bases, *node.decorators, *node.keywords)
+    else:
+        items = (node,)
+    for item in items:
+        for name in m.findall(item, m.Name()):
+            parts.append(cst.ensure_type(name, cst.Name).value)
     return ".".join(parts)
 
 
@@ -93,7 +83,7 @@ class SortingTransformer(cst.CSTTransformer):
         updated_node: cst.CSTNode,
     ) -> cst.CSTNode:
         """Swap matching class or function nodes for their replacement."""
-        if m.matches(updated_node, m.ClassDef() | m.FunctionDef()):
+        if isinstance(original_node, (cst.ClassDef, cst.FunctionDef)):
             return self.replacements.get(_gen_unique_name(original_node), updated_node)
         return updated_node
 
@@ -132,25 +122,26 @@ class SortCodeCommand(VisitorBasedCodemodCommand, m.MatcherDecoratableTransforme
     def _get_dependencies(
         self,
         node: cst.ClassDef | cst.FunctionDef,
-    ) -> tuple[list[str], Scope]:
-        meta: md.Scope = self.get_metadata(
-            md.ScopeProvider,
-            self.original_nodes.get(_gen_unique_name(node)),
-        )
-        dependencies = set()
+    ) -> tuple[list[str], md.Scope]:
+        original = self.original_nodes.get(_gen_unique_name(node))
+        meta = None if original is None else self.get_metadata(md.ScopeProvider, original, None)
+        if meta is None:
+            msg = f"missing scope metadata for {node.name.value!r}"
+            raise ValueError(msg)
+        dependencies: set[str] = set()
         if isinstance(meta, (md.ClassScope, md.GlobalScope)):
+
+            def _outer_scope(scope: object) -> bool:
+                return isinstance(scope, (md.ClassScope, md.GlobalScope)) or (
+                    isinstance(scope, md.ClassScope) and scope.parent != meta
+                )
+
             for found in self.extractall(
                 node,
                 m.SaveMatchedNode(
                     m.Name(
                         value=m.DoesNotMatch(node.name.value),
-                        metadata=m.MatchMetadataIfTrue(
-                            md.ScopeProvider,
-                            lambda n: (
-                                isinstance(n, (md.ClassScope, md.GlobalScope))
-                                or (isinstance(n, md.ClassScope) and n.parent != meta)
-                            ),
-                        ),
+                        metadata=m.MatchMetadataIfTrue(md.ScopeProvider, _outer_scope),
                     ),
                     "name",
                 ),
@@ -204,7 +195,7 @@ class SortCodeCommand(VisitorBasedCodemodCommand, m.MatcherDecoratableTransforme
 
     def _get_replacements(
         self,
-        items: list[cst.BaseStatement | cst.ClassDef | cst.FunctionDef],
+        items: list[cst.ClassDef | cst.FunctionDef],
     ) -> dict[str, cst.ClassDef | cst.FunctionDef]:
         return {
             _gen_unique_name(old): new for old, new in zip(items, sorted(items, key=self._node_sort_key), strict=True)
@@ -224,25 +215,25 @@ class SortCodeCommand(VisitorBasedCodemodCommand, m.MatcherDecoratableTransforme
             method_type = MethodType.instance
             for outer_decorator in node.decorators:
                 decorator = outer_decorator.decorator
-                decorator_parts = [part.value for part in self.findall(decorator, m.Name())]
+                decorator_parts = [cst.ensure_type(part, cst.Name).value for part in self.findall(decorator, m.Name())]
                 if len(decorator_parts) == _PROPERTY_DECORATOR_PARTS:
-                    decorator_type, property_type = decorator_parts
+                    decorator_type, accessor = decorator_parts
                     if decorator_type == node.name.value:
                         method_type = MethodType.property
-                        property_type = getattr(PropertyType, property_type)
+                        property_type = PropertyType[accessor]
                 if len(decorator_parts) == _PLAIN_DECORATOR_PARTS:
                     decorator_type = decorator_parts[0]
                     if decorator_type == "property":
                         method_type = MethodType.property
                         property_type = PropertyType.getter
                     else:
-                        method_type = getattr(MethodType, decorator_type, method_type)
+                        method_type = MethodType.__members__.get(decorator_type, method_type)
                 if self.matches(
                     decorator,
                     m.Attribute(attr=m.Name(value="fixture"), value=m.Name("pytest"))
                     | m.Call(func=m.Attribute(attr=m.Name(value="fixture"), value=m.Name("pytest"))),
                 ):
-                    scope = self.extract(
+                    scope_match = self.extract(
                         decorator,
                         m.Call(
                             args=[
@@ -273,12 +264,12 @@ class SortCodeCommand(VisitorBasedCodemodCommand, m.MatcherDecoratableTransforme
                         ),
                     )
                     fixture_type = FixtureType.function_fixture
-                    if scope:
-                        scope = cst.ensure_type(scope["scope"], cst.SimpleString).evaluated_value
-                        fixture_type = getattr(FixtureType, f"{scope}_fixture")
+                    if scope_match:
+                        scope_value = cst.ensure_type(scope_match["scope"], cst.SimpleString).evaluated_value
+                        fixture_type = FixtureType[f"{scope_value}_fixture"]
                     method_type = MethodType.autouse_fixture if autouse else MethodType.fixture
-                elif hasattr(decorator, "value") and self.matches(decorator.value, m.Name()):
-                    method_type = getattr(MethodType, decorator.value.value, method_type)
+                elif isinstance(decorator, cst.Attribute) and isinstance(decorator.value, cst.Name):
+                    method_type = MethodType.__members__.get(decorator.value.value, method_type)
         return (
             [
                 DependencyType.required
@@ -308,8 +299,10 @@ class SortCodeCommand(VisitorBasedCodemodCommand, m.MatcherDecoratableTransforme
         updated_node: cst.ClassDef,
     ) -> cst.ClassDef:
         """Sort the methods of the class body before returning the rewritten node."""
-        items = [item for item in updated_node.body.body if self.matches(item, m.ClassDef() | m.FunctionDef())]
-        updated_node = updated_node.visit(SortingTransformer(self._get_replacements(items)))
+        items = [item for item in updated_node.body.body if isinstance(item, (cst.ClassDef, cst.FunctionDef))]
+        updated_node = cst.ensure_type(
+            updated_node.visit(SortingTransformer(self._get_replacements(items))), cst.ClassDef
+        )
         self.in_class = False
         return updated_node
 
@@ -319,8 +312,10 @@ class SortCodeCommand(VisitorBasedCodemodCommand, m.MatcherDecoratableTransforme
         updated_node: cst.Module,
     ) -> cst.Module:
         """Sort the module-level definitions before returning the rewritten module."""
-        items = [item for item in updated_node.body if self.matches(item, m.ClassDef() | m.FunctionDef())]
-        updated_node = updated_node.visit(SortingTransformer(self._get_replacements(items)))
+        items = [item for item in updated_node.body if isinstance(item, (cst.ClassDef, cst.FunctionDef))]
+        updated_node = cst.ensure_type(
+            updated_node.visit(SortingTransformer(self._get_replacements(items))), cst.Module
+        )
         self.original_nodes = {}
         return updated_node
 
