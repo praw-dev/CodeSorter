@@ -256,10 +256,13 @@ See the ``examples/`` directory for before and after examples of CodeSorter in a
  License
 *********
 
-This project is licensed under the MIT License - see the LICENSE.txt file for details.
+This project is licensed under the MIT License - see the `LICENSE.txt
+<https://github.com/LilSpazJoekp/codesorter/blob/main/LICENSE.txt>`_ file for details.
 
 ***********
  Changelog
 ***********
 
-See CHANGES.rst for the full change log.
+See the `change log
+<https://codesorter.readthedocs.io/en/latest/package_info/change_log.html>`_ for the
+full list of changes.
