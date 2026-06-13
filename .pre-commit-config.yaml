@@ -1,13 +1,13 @@
 repos:
   - repo: local
     hooks:
-      - id: codesorter-check
-        name: codesorter-check
-        entry: codesorter --check -e test_files -e examples
+      - always_run: true
+        entry: codesorter --exclude examples --exclude test_files
+        id: codesorter
         language: system
-        types: [ python ]
+        name: codesorter
         pass_filenames: false
-        always_run: true
+        types: [ python ]
 
   - hooks:
       - id: docstrfmt

@@ -12,13 +12,12 @@ class TestCLI:
 
     def test_cli_help(self, capsys):
         """Test that CLI help works."""
-        from click.testing import CliRunner
-
         from codesorter import main
 
-        result = CliRunner().invoke(main, ["--help"])
-        assert result.exit_code == 0
-        assert "Sort Python code" in result.output
+        with pytest.raises(SystemExit) as exc_info:
+            main(argv=["--help"])
+        assert exc_info.value.code == 0
+        assert "Sort Python code" in capsys.readouterr().out
 
 
 class TestSortCodeCommand:
