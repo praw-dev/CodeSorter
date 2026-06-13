@@ -11,3 +11,8 @@
     :caption: Package Info
 
     package_info/change_log
+
+.. toctree::
+    :hidden:
+
+    genindex
