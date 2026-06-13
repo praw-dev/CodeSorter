@@ -34,16 +34,16 @@ From Source:
 
 .. code-block:: bash
 
-    git clone https://github.com/LilSpazJoekp/codesorter.git
-    cd codesorter
+    git clone https://github.com/praw-dev/CodeSorter.git
+    cd CodeSorter
     uv pip install -e .
 
 Development Installation:
 
 .. code-block:: bash
 
-    git clone https://github.com/LilSpazJoekp/codesorter.git
-    cd codesorter
+    git clone https://github.com/praw-dev/CodeSorter.git
+    cd CodeSorter
     uv sync
 
 *******
@@ -76,7 +76,7 @@ commit:
 
     # .pre-commit-config.yaml
     repos:
-      - repo: https://github.com/LilSpazJoekp/codesorter
+      - repo: https://github.com/praw-dev/CodeSorter
         rev: v0.0.3
         hooks:
           - id: codesorter
@@ -86,7 +86,7 @@ Or use the check-only variant, which fails the hook without modifying files:
 .. code-block:: yaml
 
     repos:
-      - repo: https://github.com/LilSpazJoekp/codesorter
+      - repo: https://github.com/praw-dev/CodeSorter
         rev: v0.0.3
         hooks:
           - id: codesorter-check
@@ -192,8 +192,8 @@ Setting Up Development Environment
 .. code-block:: bash
 
     # Clone the repository
-    git clone https://github.com/LilSpazJoekp/codesorter.git
-    cd codesorter
+    git clone https://github.com/praw-dev/CodeSorter.git
+    cd CodeSorter
 
     # Install with development dependencies
     uv sync
@@ -257,7 +257,7 @@ See the ``examples/`` directory for before and after examples of CodeSorter in a
 *********
 
 This project is licensed under the MIT License - see the `LICENSE.txt
-<https://github.com/LilSpazJoekp/codesorter/blob/main/LICENSE.txt>`_ file for details.
+<https://github.com/praw-dev/CodeSorter/blob/main/LICENSE.txt>`_ file for details.
 
 ***********
  Changelog

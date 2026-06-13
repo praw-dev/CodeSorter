@@ -55,6 +55,10 @@ description = "A Python codemod that sorts and organizes code in your files."
 dynamic = ["version"]
 keywords = ["codemod", "codesorter", "libcst", "sort"]
 license = {file = "LICENSE.txt"}
+maintainers = [
+  {email = "lilspazjoekp@gmail.com", name = "Joel Payne"},
+  {email = "bbzbryce@gmail.com", name = "Bryce Boe"}
+]
 name = "codesorter"
 readme = "README.rst"
 requires-python = ">=3.10"
@@ -64,8 +68,8 @@ codesorter = "codesorter:main"
 
 [project.urls]
 "Documentation" = "https://codesorter.readthedocs.io/"
-"Issue Tracker" = "https://github.com/LilSpazJoekp/codesorter/issues"
-"Source Code" = "https://github.com/LilSpazJoekp/codesorter"
+"Issue Tracker" = "https://github.com/praw-dev/CodeSorter/issues"
+"Source Code" = "https://github.com/praw-dev/CodeSorter"
 
 [tool.coverage.report]
 exclude_lines = [
