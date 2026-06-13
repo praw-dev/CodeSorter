@@ -1,3 +1,7 @@
+jobs:
+  stale_action:
+    name: Close stale issues and PRs
+    uses: praw-dev/.github/.github/workflows/stale_action.yml@9ff8957d0cab4cf8c9d7cb5592aedb3d456cc058 # v1.4.0
 name: Close stale issues and PRs
 on:
   schedule:
@@ -6,26 +10,3 @@ on:
 permissions:
   issues: write
   pull-requests: write
-jobs:
-  stale:
-    name: Close stale issues and PRs
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/stale@5bef64f19d7facfb25b37b414482c7164d639639 # v9.1.0
-        with:
-          days-before-stale: 60
-          days-before-close: 7
-          stale-issue-label: stale
-          stale-pr-label: stale
-          exempt-issue-labels: "pinned,security,help wanted"
-          exempt-pr-labels: "pinned,security"
-          stale-issue-message: >
-            This issue has been automatically marked as stale because it has not had
-            recent activity. It will be closed if no further activity occurs.
-          stale-pr-message: >
-            This pull request has been automatically marked as stale because it has not had
-            recent activity. It will be closed if no further activity occurs.
-          close-issue-message: >
-            This issue was closed because it has been stalled for 7 days with no activity.
-          close-pr-message: >
-            This pull request was closed because it has been stalled for 7 days with no activity.

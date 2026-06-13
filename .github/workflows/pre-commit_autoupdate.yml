@@ -1,3 +1,10 @@
+jobs:
+  pre-commit_autoupdate:
+    name: Update pre-commit hooks
+    secrets:
+      APP_ID: ${{ secrets.APP_ID }}
+      APP_PRIVATE_KEY: ${{ secrets.APP_PRIVATE_KEY }}
+    uses: praw-dev/.github/.github/workflows/pre-commit_autoupdate.yml@9ff8957d0cab4cf8c9d7cb5592aedb3d456cc058 # v1.4.0
 name: Update pre-commit hooks
 on:
   schedule:
@@ -5,28 +12,3 @@ on:
   workflow_dispatch:
 permissions:
   contents: read
-jobs:
-  autoupdate:
-    name: Update pre-commit hooks
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write
-      pull-requests: write
-    steps:
-      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
-      - name: Install uv
-        uses: astral-sh/setup-uv@fac544c07dec837d0ccb6301d7b5580bf5edae39 # v8.2.0
-        with:
-          enable-cache: true
-      - name: Set up Python
-        run: uv python install 3.13
-      - name: Run pre-commit autoupdate
-        run: uv run --group lint pre-commit autoupdate
-      - name: Create pull request
-        uses: peter-evans/create-pull-request@271a8d0340265f705b14b6d32b9829c1cb33d45e # v7.0.8
-        with:
-          commit-message: "chore: update pre-commit hooks"
-          title: "chore: update pre-commit hooks"
-          body: Automated update of pre-commit hook revisions.
-          branch: pre-commit-autoupdate
-          delete-branch: true

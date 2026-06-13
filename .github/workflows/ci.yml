@@ -1,71 +1,17 @@
+concurrency:
+  group: check-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  ci:
+    name: CI
+    uses: praw-dev/.github/.github/workflows/ci.yml@9ff8957d0cab4cf8c9d7cb5592aedb3d456cc058 # v1.4.0
+    with:
+      min_python: "3.10"
+      python_versions: '["3.10", "3.11", "3.12", "3.13", "3.14"]'
 name: CI
-
 on:
   workflow_dispatch:
   push:
-    branches: [main]
+    branches: ["main"]
   pull_request:
-
 permissions: read-all
-
-concurrency:
-  group: ci-${{ github.ref }}
-  cancel-in-progress: true
-
-jobs:
-  test:
-    name: test (py${{ matrix.python-version }})
-    runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        python-version: ["3.10", "3.11", "3.12", "3.13", "3.14"]
-    steps:
-      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
-
-      - name: Install uv
-        uses: astral-sh/setup-uv@fac544c07dec837d0ccb6301d7b5580bf5edae39 # v8.2.0
-        with:
-          enable-cache: true
-
-      - name: Set up Python ${{ matrix.python-version }}
-        run: uv python install ${{ matrix.python-version }}
-
-      - name: Run tests
-        env:
-          PY: ${{ matrix.python-version }}
-        run: uv run --group test tox -e py${PY//./}
-
-  lint:
-    name: pre-commit
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
-
-      - name: Install uv
-        uses: astral-sh/setup-uv@fac544c07dec837d0ccb6301d7b5580bf5edae39 # v8.2.0
-        with:
-          enable-cache: true
-
-      - name: Set up Python
-        run: uv python install 3.13
-
-      - name: Run pre-commit
-        run: uv run --group lint tox -e pre-commit
-
-  type:
-    name: pyright
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
-
-      - name: Install uv
-        uses: astral-sh/setup-uv@fac544c07dec837d0ccb6301d7b5580bf5edae39 # v8.2.0
-        with:
-          enable-cache: true
-
-      - name: Set up Python
-        run: uv python install 3.13
-
-      - name: Run pyright
-        run: uv run --group type tox -e type
