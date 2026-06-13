@@ -74,10 +74,7 @@ path = "codesorter/const.py"
 [tool.pyright]
 include = ["codesorter"]
 pythonVersion = "3.10"
-reportMissingImports = "none"
-reportMissingTypeStubs = "none"
-reportUnnecessaryTypeIgnoreComment = "error"
-typeCheckingMode = "standard"
+typeCheckingMode = "strict"
 
 [tool.pytest.ini_options]
 filterwarnings = "ignore::DeprecationWarning"

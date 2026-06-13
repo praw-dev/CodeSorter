@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import sys
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 import click
 import libcst as cst
@@ -13,6 +14,9 @@ from libcst.codemod import CodemodContext
 
 from codesorter.const import DEFAULT_EXCLUDES
 from codesorter.sort_code import SortCodeCommand
+
+if TYPE_CHECKING:
+    from pathspec.pattern import Pattern
 
 
 def _check_files(files: list[str]) -> int:
@@ -84,14 +88,14 @@ def _collect_files(
 def _load_gitignore_specs(
     root: Path,
     excludes: set[str],
-) -> list[tuple[Path, pathspec.PathSpec]]:
+) -> list[tuple[Path, pathspec.PathSpec[Pattern]]]:
     """Collect (anchor_dir, spec) for every .gitignore at or below root.
 
     Each spec is interpreted relative to its containing directory, matching git's own
     behavior with nested .gitignore files.
 
     """
-    specs: list[tuple[Path, pathspec.PathSpec]] = []
+    specs: list[tuple[Path, pathspec.PathSpec[Pattern]]] = []
     for gitignore in root.rglob(".gitignore"):
         if not gitignore.is_file():
             continue
@@ -105,7 +109,7 @@ def _load_gitignore_specs(
 
 def _matches_gitignore(
     candidate: Path,
-    specs: list[tuple[Path, pathspec.PathSpec]],
+    specs: list[tuple[Path, pathspec.PathSpec[Pattern]]],
 ) -> bool:
     """Return True if any covering .gitignore matches the candidate file."""
     for anchor, spec in specs:
@@ -168,7 +172,7 @@ def _matches_gitignore(
 )
 def main(
     check: bool,
-    jobs: int,
+    jobs: int | None,
     show_successes: bool,
     unified_diff: bool,
     extra_excludes: tuple[str, ...],

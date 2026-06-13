@@ -1,4 +1,9 @@
+# libcst's matcher API (matches/findall/extractall) and CST node unions are only
+# partially typed, so values flowing out of them surface as Unknown/Any under strict
+# pyright. These suppressions scope that library-boundary noise to this module; the
+# rest of the package type-checks cleanly under strict mode.
 # pyright: reportAttributeAccessIssue=false, reportArgumentType=false, reportAssignmentType=false, reportCallIssue=false, reportOperatorIssue=false
+# pyright: reportUnknownArgumentType=false, reportUnknownMemberType=false, reportUnknownParameterType=false, reportUnknownVariableType=false, reportMissingTypeArgument=false
 """The SortCodeCommand libcst codemod that reorders classes, methods, and functions."""
 
 from __future__ import annotations
@@ -121,8 +126,8 @@ class SortCodeCommand(VisitorBasedCodemodCommand, m.MatcherDecoratableTransforme
         self._counter = 0
         self._class_depth = 0
         self.original_nodes: dict[str, cst.CSTNode] = {}
-        self.dependencies = defaultdict(set)
-        self.dependents = defaultdict(set)
+        self.dependencies: defaultdict[str, set[str]] = defaultdict(set)
+        self.dependents: defaultdict[str, set[str]] = defaultdict(set)
 
     def _get_dependencies(
         self,
