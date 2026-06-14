@@ -90,7 +90,7 @@ commit:
     # .pre-commit-config.yaml
     repos:
       - repo: https://github.com/praw-dev/CodeSorter
-        rev: v0.0.3
+        rev: v0.2.5
         hooks:
           - id: codesorter
 
@@ -100,7 +100,7 @@ Or use the check-only variant, which fails the hook without modifying files:
 
     repos:
       - repo: https://github.com/praw-dev/CodeSorter
-        rev: v0.0.3
+        rev: v0.2.5
         hooks:
           - id: codesorter-check
 
