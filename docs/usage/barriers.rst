@@ -53,11 +53,14 @@ of definitions keeps the definitions on either side from sorting together. If a
 statement legitimately should *not* separate your definitions — you know it has no
 ordering relationship with them — move it yourself so it no longer sits between them.
 For example, hoist a one-off call to the top of the module (just below the imports) or
-to the bottom:
+to the bottom.
+
+**Before** — the call sits between the classes, splitting them into two segments, so
+``Alpha`` and ``Beta`` cannot sort together:
 
 .. code-block:: python
+    :class: codesorter-before
 
-    # Before: the call splits the class definitions into two segments.
     class Beta: ...
 
 
@@ -66,8 +69,12 @@ to the bottom:
 
     class Alpha: ...
 
+**After** — relocate the call above both classes; ``Alpha`` and ``Beta`` now form a
+single segment and sort into order:
 
-    # After: relocate the call so Alpha and Beta sort as one segment.
+.. code-block:: python
+    :class: codesorter-after
+
     warnings.filterwarnings("ignore")
 
 

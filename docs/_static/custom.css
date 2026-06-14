@@ -1,0 +1,26 @@
+/* Tint the before/after code blocks on the barriers page.
+   Translucent fills layer over the page background, so they read correctly in
+   both the light and dark Furo themes. */
+.codesorter-before,
+.codesorter-after {
+    border-left: 4px solid;
+    border-radius: 0.2rem;
+    margin-bottom: 1rem;
+    padding-left: 0.4rem;
+}
+
+.codesorter-before {
+    background-color: rgba(229, 83, 75, 0.08);
+    border-left-color: #e5534b;
+}
+
+.codesorter-after {
+    background-color: rgba(63, 185, 80, 0.08);
+    border-left-color: #3fb950;
+}
+
+/* Let the container tint show through instead of Furo's code background. */
+.codesorter-before div.highlight,
+.codesorter-after div.highlight {
+    background: transparent;
+}

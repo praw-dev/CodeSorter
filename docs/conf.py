@@ -16,6 +16,8 @@ extensions = [
     "sphinx.ext.intersphinx",
     "sphinx_autodoc_typehints",
 ]
+html_css_files = ["custom.css"]
+html_static_path = ["_static"]
 html_theme = "furo"
 intersphinx_mapping = {
     "python": ("https://docs.python.org/3", None),
