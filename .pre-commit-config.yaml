@@ -1,13 +1,10 @@
 repos:
-  - repo: local
-    hooks:
-      - always_run: true
-        entry: codesorter --exclude examples --exclude test_files
+  - hooks:
+      - additional_dependencies: [ ruff ]
+        exclude: ^(examples|tests/test_files)/
         id: codesorter
-        language: system
-        name: codesorter
-        pass_filenames: false
-        types: [ python ]
+    repo: https://github.com/praw-dev/CodeSorter
+    rev: 33c79d5c2fab0b6f1a6850c97f92da1739951f2d  # frozen: v0.1.0
 
   - hooks:
       - id: docstrfmt
