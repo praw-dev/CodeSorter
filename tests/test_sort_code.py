@@ -48,6 +48,22 @@ class TestSortCodeCommand:
 
         assert expected_code == result.code
 
+    def test_barrier(self, test_files):
+        """Test that definitions are not reordered across a side-effecting statement.
+
+        A bare statement such as ``sys.path.insert(0, str(REPO_ROOT))`` is a barrier:
+        the constants before it (which it may use) must stay before it, so sorting
+        happens only within each segment between barriers rather than across the whole
+        module.
+
+        """
+        input_code, expected_code = test_files
+        context = CodemodContext()
+        command = SortCodeCommand(context)
+        result = command.transform_module(cst.parse_module(input_code))
+
+        assert expected_code == result.code
+
     def test_basic_function(self, test_files):
         """Test that functions are sorted correctly."""
         input_code, expected_code = test_files

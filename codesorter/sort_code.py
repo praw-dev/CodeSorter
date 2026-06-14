@@ -488,6 +488,44 @@ class SortCodeCommand(VisitorBasedCodemodCommand, m.MatcherDecoratableTransforme
             property_type,
         )
 
+    def _reorder_segment(
+        self,
+        body: Sequence[cst.BaseStatement],
+        new_body: list[cst.BaseStatement],
+        *,
+        anchor_indexes: list[int],
+        trailers_of: dict[int, list[int]],
+    ) -> None:
+        """Reorder one barrier-free segment of sortable members in place within ``new_body``."""
+        if not anchor_indexes:
+            return
+        positions: list[int] = []
+        anchor_nodes: list[_Sortable] = []
+        trailers_by_anchor: dict[int, list[cst.BaseStatement]] = {}
+        for index in anchor_indexes:
+            trailer_indexes = sorted(trailers_of.get(index, []))
+            positions.append(index)
+            positions.extend(trailer_indexes)
+            anchor = cast("_Sortable", body[index])
+            anchor_nodes.append(anchor)
+            trailers_by_anchor[id(anchor)] = [body[trailer] for trailer in trailer_indexes]
+        # Blank-line separators are positional: the n-th anchor in the segment keeps the
+        # n-th separator. Trailers are excluded so they stay tight to their anchor.
+        anchor_separators = [_split_leading_lines(node)[0] for node in anchor_nodes]
+        trailer_ids = {id(trailer) for trailers in trailers_by_anchor.values() for trailer in trailers}
+        flattened: list[cst.BaseStatement] = []
+        for anchor in self._sorted_items(anchor_nodes):
+            flattened.append(anchor)
+            flattened.extend(trailers_by_anchor[id(anchor)])
+        anchor_index = 0
+        for position, member in zip(sorted(positions), flattened, strict=True):
+            if id(member) in trailer_ids:
+                new_body[position] = member
+                continue
+            _, attached = _split_leading_lines(member)
+            new_body[position] = member.with_changes(leading_lines=[*anchor_separators[anchor_index], *attached])
+            anchor_index += 1
+
     def _resolve_dependents(self, node: _Sortable) -> None:
         dependencies, _ = self._get_dependencies(node)
         name = _sortable_name(node)
@@ -513,40 +551,27 @@ class SortCodeCommand(VisitorBasedCodemodCommand, m.MatcherDecoratableTransforme
         Blank-line spacing stays with each slot while comment lines travel with their
         statement, so reordering never shifts a blank line onto a different statement.
 
+        Sortable members are only reordered within a segment of consecutive sortable
+        members; any other statement (an import, a bare expression such as
+        ``sys.path.insert(...)``, an ``if`` block) is a barrier that no definition may
+        cross, since the barrier may depend on a definition beside it.
+
         """
         anchors = self._anchor_trailers(body, sort_constants=sort_constants)
         trailers_of: defaultdict[int, list[int]] = defaultdict(list)
         for trailer_index, anchor_index in anchors.items():
             trailers_of[anchor_index].append(trailer_index)
-        positions: list[int] = []
-        anchor_nodes: list[_Sortable] = []
-        trailers_by_anchor: dict[int, list[cst.BaseStatement]] = {}
-        for index, member in enumerate(body):
-            if index in anchors or not self._is_sortable(member, sort_constants=sort_constants):
-                continue
-            trailer_indexes = sorted(trailers_of.get(index, []))
-            positions.append(index)
-            positions.extend(trailer_indexes)
-            anchor = cast("_Sortable", member)
-            anchor_nodes.append(anchor)
-            trailers_by_anchor[id(anchor)] = [body[trailer] for trailer in trailer_indexes]
-        # Blank-line separators are positional: the n-th anchor in the body keeps the
-        # n-th separator. Trailers are excluded so they stay tight to their anchor.
-        anchor_separators = [_split_leading_lines(node)[0] for node in anchor_nodes]
-        trailer_ids = {id(trailer) for trailers in trailers_by_anchor.values() for trailer in trailers}
-        flattened: list[cst.BaseStatement] = []
-        for anchor in self._sorted_items(anchor_nodes):
-            flattened.append(anchor)
-            flattened.extend(trailers_by_anchor[id(anchor)])
         new_body = list(body)
-        anchor_index = 0
-        for position, member in zip(sorted(positions), flattened, strict=True):
-            if id(member) in trailer_ids:
-                new_body[position] = member
+        segment: list[int] = []
+        for index, member in enumerate(body):
+            if index in anchors:
+                continue  # a trailer, reordered together with its anchor
+            if self._is_sortable(member, sort_constants=sort_constants):
+                segment.append(index)
                 continue
-            _, attached = _split_leading_lines(member)
-            new_body[position] = member.with_changes(leading_lines=[*anchor_separators[anchor_index], *attached])
-            anchor_index += 1
+            self._reorder_segment(body, new_body, anchor_indexes=segment, trailers_of=trailers_of)
+            segment = []
+        self._reorder_segment(body, new_body, anchor_indexes=segment, trailers_of=trailers_of)
         return new_body
 
     def _sorted_items(

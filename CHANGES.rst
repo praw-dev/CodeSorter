@@ -8,6 +8,13 @@ codesorter follows `semantic versioning <https://semver.org/>`_.
  Unreleased
 ************
 
+**Fixed**
+
+- Never reorder a definition across a side-effecting statement. A bare statement such as
+  ``sys.path.insert(0, str(REPO_ROOT))`` is now a barrier, and sorting happens only
+  within each segment between barriers, so a constant the statement uses is no longer
+  hoisted after it (which raised ``NameError``).
+
 ********************
  0.2.3 (2026/06/14)
 ********************
