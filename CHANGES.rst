@@ -14,6 +14,13 @@ codesorter follows `semantic versioning <https://semver.org/>`_.
   side-effecting statements, and how to relocate a statement that should not be a
   barrier.
 
+**Changed**
+
+- Refresh the documentation: the installation instructions use uv-native commands, the
+  class-method ordering reference and example now match the implementation, and the
+  barrier relocation example is split into separate, color-tinted before and after
+  blocks.
+
 ********************
  0.2.5 (2026/06/14)
 ********************
