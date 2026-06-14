@@ -8,6 +8,14 @@ codesorter follows `semantic versioning <https://semver.org/>`_.
  Unreleased
 ************
 
+**Changed**
+
+- Depend on ``ruff`` directly so the formatter is always installed alongside
+  ``codesorter``. The CLI shells out to ``ruff format``, which previously only worked
+  when ``ruff`` happened to be on ``PATH`` from another source; it is now a runtime
+  dependency, so ``codesorter`` is self-contained in a clean environment and in the
+  isolated pre-commit hook.
+
 ********************
  0.2.4 (2026/06/14)
 ********************
