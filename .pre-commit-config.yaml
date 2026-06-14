@@ -1,6 +1,6 @@
 repos:
   - hooks:
-      - additional_dependencies: [ ruff ]
+      - additional_dependencies: [ ruff==0.15.17 ]
         exclude: ^(examples|tests/test_files)/
         id: codesorter
     repo: https://github.com/praw-dev/CodeSorter
