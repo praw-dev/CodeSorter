@@ -2,9 +2,10 @@
  Sort Code
 ###########
 
-The :class:`.SortCodeCommand` is the libcst codemod that performs the reordering. It is
-applied by the CLI, but can also be used directly as a libcst codemod (for example via
-``python -m libcst.tool codemod codesorter.sort_code.SortCodeCommand``).
+The :class:`.SortCodeCommand` is the libcst codemod that performs the reordering. The
+``codesorter`` CLI applies it to the files you pass it; you can also use it directly as
+a libcst codemod in your own tooling by constructing it with a ``CodemodContext`` and
+calling ``transform_module`` (see the programmatic example in the README).
 
 .. autoclass:: codesorter.sort_code.SortCodeCommand
 

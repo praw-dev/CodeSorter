@@ -38,10 +38,10 @@ From PyPI:
 
 .. code-block:: bash
 
-    # using uv and add to the lint dependency group
+    # install the codesorter CLI as a standalone tool
+    uv tool install codesorter
+    # or add it to a project's lint dependency group
     uv add --group lint codesorter
-    # or using pip
-    pip install codesorter
 
 From Source:
 
@@ -49,7 +49,7 @@ From Source:
 
     git clone https://github.com/praw-dev/CodeSorter.git
     cd CodeSorter
-    uv pip install -e .
+    uv tool install .
 
 Development Installation:
 
@@ -148,10 +148,18 @@ Function Sorting
 Class Method Sorting
 ====================
 
-- Methods are sorted with special consideration for decorators: - ``@property`` methods
-  (getters, setters, deleters) - ``@staticmethod`` methods - ``@classmethod`` methods -
-  Regular instance methods
-- Methods within classes maintain their logical grouping
+- Methods are grouped by kind, in this order:
+
+  - ``@abstractmethod`` methods
+  - pytest fixtures (``autouse`` fixtures first)
+  - ``@staticmethod`` methods
+  - ``@classmethod`` methods
+  - cached properties and ``@property`` methods (getter, then setter, then deleter)
+  - ``@contextmanager`` methods
+  - regular instance methods
+
+- Within each group, methods are sorted alphabetically, with leading-underscore
+  (``_private`` and ``__dunder__``) names ahead of public ones
 
 Pytest Fixture Sorting
 ======================
@@ -184,12 +192,12 @@ Example Transformation
 .. code-block:: python
 
     class MyClass:
-        @property
-        def a_property(self):
-            pass
-
         @staticmethod
         def b_static():
+            pass
+
+        @property
+        def a_property(self):
             pass
 
         def z_method(self):
