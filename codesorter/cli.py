@@ -8,9 +8,8 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 import libcst as cst
-import libcst.tool
 import pathspec
-from libcst.codemod import CodemodContext
+from libcst.codemod import CodemodContext, parallel_exec_transform_with_prettyprint
 
 from codesorter.const import DEFAULT_EXCLUDES
 from codesorter.sort_code import SortCodeCommand
@@ -208,20 +207,20 @@ def main(*, argv: list[str] | None = None) -> None:
     if args.check:
         sys.exit(_check_files(files=files))
 
-    cst_argv = [
-        "codemod",
-        "-x",
-        "codesorter.sort_code.SortCodeCommand",
-        *files,
-    ]
-
-    if args.unified_diff:
-        cst_argv.append("--unified-diff")
-
-    if args.show_successes:
-        cst_argv.append("--show-successes")
-
-    if args.jobs is not None:
-        cst_argv.extend(["--jobs", str(args.jobs)])
-
-    sys.exit(libcst.tool.main("codesorter", cst_argv))
+    # Format with ruff so downstream projects need no ``.libcst.codemod.yaml`` (the
+    # libcst codemod tool would otherwise default to black).
+    result = parallel_exec_transform_with_prettyprint(
+        SortCodeCommand,
+        files,
+        format_code=True,
+        formatter_args=["ruff", "format", "-"],
+        jobs=args.jobs,
+        repo_root=".",
+        show_successes=args.show_successes,
+        unified_diff=5 if args.unified_diff else None,
+    )
+    sys.stderr.write(f"Finished codemodding {result.successes + result.skips + result.failures} files!\n")
+    sys.stderr.write(f" - Transformed {result.successes} files successfully.\n")
+    sys.stderr.write(f" - Skipped {result.skips} files.\n")
+    sys.stderr.write(f" - Failed to codemod {result.failures} files.\n")
+    sys.exit(1 if result.failures > 0 else 0)

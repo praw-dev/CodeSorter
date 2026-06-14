@@ -8,6 +8,12 @@ codesorter follows `semantic versioning <https://semver.org/>`_.
  Unreleased
 ************
 
+**Changed**
+
+- Format reordered files with ``ruff`` by default instead of ``black``, so a downstream
+  project no longer needs a ``.libcst.codemod.yaml`` to use the ``codesorter`` CLI or
+  pre-commit hook. ``ruff`` must be importable on the ``PATH`` when sorting.
+
 ********************
  0.2.1 (2026/06/14)
 ********************
