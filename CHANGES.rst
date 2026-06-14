@@ -8,6 +8,10 @@ codesorter follows `semantic versioning <https://semver.org/>`_.
  Unreleased
 ************
 
+********************
+ 0.2.2 (2026/06/14)
+********************
+
 **Changed**
 
 - Format reordered files with ``ruff`` by default instead of ``black``, so a downstream
