@@ -217,6 +217,23 @@ from pathlib import Path
         assert "import sys" in result.code
         assert "from pathlib import Path" in result.code
 
+    def test_name_rebinding(self, test_files):
+        """Test that an assignment rebinding a method name stays after that method.
+
+        ``ten = cachedproperty(ten, ...)`` binds the same name as the ``def ten`` above
+        it and wraps that method, so the assignment must keep its position after the
+        method (moving it ahead would raise ``NameError`` and change which binding
+        wins). Property getter/setter/deleter groups are unaffected — they carry no
+        assignment.
+
+        """
+        input_code, expected_code = test_files
+        context = CodemodContext()
+        command = SortCodeCommand(context)
+        result = command.transform_module(cst.parse_module(input_code))
+
+        assert expected_code == result.code
+
     def test_order_sensitive(self, test_files):
         """Test that enum, dataclass, and named-tuple member order is preserved."""
         input_code, expected_code = test_files

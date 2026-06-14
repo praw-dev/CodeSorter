@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import enum
 import heapq
+import itertools
 from collections import defaultdict
 from enum import auto
 from typing import TYPE_CHECKING, Protocol, TypeAlias, TypeVar, cast
@@ -272,12 +273,27 @@ class SortCodeCommand(VisitorBasedCodemodCommand, m.MatcherDecoratableTransforme
             name_to_indexes[_sortable_name(item)].append(index)
         dependents: list[set[int]] = [set() for _ in items]
         indegree = [0] * len(items)
+
+        def _add_edge(earlier: int, later: int) -> None:
+            if earlier != later and later not in dependents[earlier]:
+                dependents[earlier].add(later)
+                indegree[later] += 1
+
         for index, item in enumerate(items):
             for dependency in self.dependencies.get(_sortable_name(item), ()):
                 for dependency_index in name_to_indexes.get(dependency, ()):
-                    if dependency_index != index and index not in dependents[dependency_index]:
-                        dependents[dependency_index].add(index)
-                        indegree[index] += 1
+                    _add_edge(dependency_index, index)
+        # An assignment that rebinds a name also bound by a sibling (for example
+        # ``def x`` followed by ``x = wraps(x)``) must keep its original position, since
+        # the later binding wins at runtime and may reference the earlier one. Groups of
+        # same-named methods (property getter/setter/deleter) are excluded — they carry
+        # no assignment and are ordered safely by their sort key.
+        for indexes in name_to_indexes.values():
+            for earlier, later in itertools.pairwise(indexes):
+                if isinstance(items[earlier], cst.SimpleStatementLine) or isinstance(
+                    items[later], cst.SimpleStatementLine
+                ):
+                    _add_edge(earlier, later)
         return dependents, indegree
 
     def _get_dependencies(  # noqa: C901

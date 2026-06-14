@@ -14,6 +14,15 @@ codesorter follows `semantic versioning <https://semver.org/>`_.
   project no longer needs a ``.libcst.codemod.yaml`` to use the ``codesorter`` CLI or
   pre-commit hook. ``ruff`` must be importable on the ``PATH`` when sorting.
 
+**Fixed**
+
+- Keep an assignment that rebinds a name also bound by a sibling in its original
+  position relative to that sibling. For example ``ten = cachedproperty(ten, ...)``
+  following ``def ten`` now stays after the method it wraps instead of being hoisted
+  ahead of it (which raised ``NameError`` and changed which binding wins). Property
+  getter/setter/deleter groups, which carry no assignment, are still ordered by their
+  sort key.
+
 ********************
  0.2.1 (2026/06/14)
 ********************
