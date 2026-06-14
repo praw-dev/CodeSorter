@@ -2,11 +2,11 @@
 
 from __future__ import annotations
 
+import argparse
 import sys
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-import click
 import libcst as cst
 import libcst.tool
 import pathspec
@@ -19,7 +19,69 @@ if TYPE_CHECKING:
     from pathspec.pattern import Pattern
 
 
-def _check_files(files: list[str]) -> int:
+def _build_parser() -> argparse.ArgumentParser:
+    """Build the argument parser for the code sorter CLI."""
+    parser = argparse.ArgumentParser(
+        prog="codesorter",
+        description=(
+            "Sort Python code in the specified package or file. This tool analyzes "
+            "Python code and sorts classes and functions based on their dependencies "
+            "and relationships."
+        ),
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+    )
+    parser.add_argument(
+        "-c",
+        "--check",
+        action="store_true",
+        help="Don't write files; exit non-zero if any file would be reordered.",
+    )
+    parser.add_argument(
+        "-j",
+        "--jobs",
+        type=int,
+        help="Number of jobs to use when processing files.",
+    )
+    parser.add_argument(
+        "-s",
+        "--show-successes",
+        action="store_true",
+        help="Print files successfully sorted with no warnings.",
+    )
+    parser.add_argument(
+        "-u",
+        "--unified-diff",
+        action="store_true",
+        help="Output unified diff instead of contents.",
+    )
+    parser.add_argument(
+        "-e",
+        "--exclude",
+        dest="extra_excludes",
+        action="append",
+        default=[],
+        metavar="NAME",
+        help="Directory name to skip when walking paths. May be passed multiple times.",
+    )
+    parser.add_argument(
+        "--no-default-excludes",
+        action="store_true",
+        help="Disable the built-in directory excludes (.git, .venv, __pycache__, build, dist, ...).",
+    )
+    parser.add_argument(
+        "--no-gitignore",
+        action="store_true",
+        help="Do not honor .gitignore files when walking paths.",
+    )
+    parser.add_argument(
+        "paths",
+        nargs="*",
+        help="Files or directories to sort. Defaults to the current directory.",
+    )
+    return parser
+
+
+def _check_files(*, files: list[str]) -> int:
     """Run the sort codemod in-process and report files that would change."""
     changed: list[str] = []
     failed: list[str] = []
@@ -27,32 +89,32 @@ def _check_files(files: list[str]) -> int:
         try:
             source = Path(path).read_text(encoding="utf-8")
         except OSError as exc:
-            click.echo(f"{path}: read error: {exc}", err=True)
+            sys.stderr.write(f"{path}: read error: {exc}\n")
             failed.append(path)
             continue
         try:
             new_tree = SortCodeCommand(CodemodContext()).transform_module(cst.parse_module(source))
         except Exception as exc:  # noqa: BLE001
-            click.echo(f"{path}: transform error: {exc}", err=True)
+            sys.stderr.write(f"{path}: transform error: {exc}\n")
             failed.append(path)
             continue
         if new_tree.code != source:
             changed.append(path)
-            click.echo(f"Would reorder: {path}", err=True)
+            sys.stderr.write(f"Would reorder: {path}\n")
     if changed or failed:
-        click.echo(
-            f"{len(changed)} file(s) would be reordered, {len(failed)} file(s) failed.",
-            err=True,
+        sys.stderr.write(
+            f"{len(changed)} file(s) would be reordered, {len(failed)} file(s) failed.\n",
         )
         return 1
     return 0
 
 
 def _collect_files(
-    paths: tuple[str, ...],
-    excludes: set[str],
     *,
+    excludes: set[str],
     honor_gitignore: bool,
+    parser: argparse.ArgumentParser,
+    paths: tuple[str, ...],
 ) -> list[str]:
     """Expand the given paths into a sorted, de-duplicated list of .py files."""
     seen: set[Path] = set()
@@ -60,8 +122,7 @@ def _collect_files(
     for raw in paths:
         path = Path(raw)
         if not path.exists():
-            click.echo(f"Path not found: {raw}", err=True)
-            sys.exit(2)
+            parser.error(f"Path not found: {raw}")
         if path.is_file():
             resolved = path.resolve()
             if resolved not in seen:
@@ -69,13 +130,13 @@ def _collect_files(
                 files.append(str(path))
             continue
 
-        ignore_specs = _load_gitignore_specs(path, excludes) if honor_gitignore else []
+        ignore_specs = _load_gitignore_specs(root=path, excludes=excludes) if honor_gitignore else []
 
         for candidate in sorted(path.rglob("*.py")):
             relative_parts = candidate.relative_to(path).parts
             if any(part in excludes for part in relative_parts):
                 continue
-            if _matches_gitignore(candidate, ignore_specs):
+            if _matches_gitignore(candidate=candidate, specs=ignore_specs):
                 continue
             resolved = candidate.resolve()
             if resolved in seen:
@@ -86,6 +147,7 @@ def _collect_files(
 
 
 def _load_gitignore_specs(
+    *,
     root: Path,
     excludes: set[str],
 ) -> list[tuple[Path, pathspec.PathSpec[Pattern]]]:
@@ -108,6 +170,7 @@ def _load_gitignore_specs(
 
 
 def _matches_gitignore(
+    *,
     candidate: Path,
     specs: list[tuple[Path, pathspec.PathSpec[Pattern]]],
 ) -> bool:
@@ -122,100 +185,43 @@ def _matches_gitignore(
     return False
 
 
-@click.command(context_settings={"show_default": True})
-@click.help_option("-h", "--help")
-@click.option(
-    "-c",
-    "--check",
-    is_flag=True,
-    help="Don't write files; exit non-zero if any file would be reordered.",
-)
-@click.option(
-    "-j",
-    "--jobs",
-    type=int,
-    help="Number of jobs to use when processing files.",
-)
-@click.option(
-    "-s",
-    "--show-successes",
-    is_flag=True,
-    help="Print files successfully sorted with no warnings.",
-)
-@click.option(
-    "-u",
-    "--unified-diff",
-    is_flag=True,
-    help="Output unified diff instead of contents.",
-)
-@click.option(
-    "-e",
-    "--exclude",
-    "extra_excludes",
-    multiple=True,
-    metavar="NAME",
-    help="Directory name to skip when walking paths. May be passed multiple times.",
-)
-@click.option(
-    "--no-default-excludes",
-    is_flag=True,
-    help="Disable the built-in directory excludes (.git, .venv, __pycache__, build, dist, ...).",
-)
-@click.option(
-    "--no-gitignore",
-    is_flag=True,
-    help="Do not honor .gitignore files when walking paths.",
-)
-@click.argument(
-    "paths",
-    nargs=-1,
-)
-def main(
-    *,
-    check: bool,
-    jobs: int | None,
-    show_successes: bool,
-    unified_diff: bool,
-    extra_excludes: tuple[str, ...],
-    no_default_excludes: bool,
-    no_gitignore: bool,
-    paths: tuple[str, ...],
-) -> None:
-    """Sort Python code in the specified package or file.
+def main(*, argv: list[str] | None = None) -> None:
+    """Sort Python code in the specified package or file."""
+    parser = _build_parser()
+    args = parser.parse_args(argv)
 
-    This tool analyzes Python code and sorts classes and functions based on their
-    dependencies and relationships.
+    paths: tuple[str, ...] = tuple(args.paths) or (".",)
 
-    """
-    if not paths:
-        paths = (".",)
-
-    excludes = set(extra_excludes)
-    if not no_default_excludes:
+    excludes = set(args.extra_excludes)
+    if not args.no_default_excludes:
         excludes.update(DEFAULT_EXCLUDES)
 
-    files = _collect_files(paths, excludes, honor_gitignore=not no_gitignore)
+    files = _collect_files(
+        excludes=excludes,
+        honor_gitignore=not args.no_gitignore,
+        parser=parser,
+        paths=paths,
+    )
     if not files:
-        click.echo("No Python files to sort.", err=True)
-        return
+        parser.error("No Python files to sort.")
 
-    if check:
-        sys.exit(_check_files(files))
+    if args.check:
+        sys.exit(_check_files(files=files))
 
-    argv = [
+    cst_argv = [
         "codemod",
         "-x",
         "codesorter.sort_code.SortCodeCommand",
         *files,
     ]
 
-    if unified_diff:
-        argv.append("--unified-diff")
+    if args.unified_diff:
+        cst_argv.append("--unified-diff")
 
-    if show_successes:
-        argv.append("--show-successes")
+    if args.show_successes:
+        cst_argv.append("--show-successes")
 
-    if jobs is not None:
-        argv.extend(["--jobs", str(jobs)])
+    if args.jobs is not None:
+        cst_argv.extend(["--jobs", str(args.jobs)])
 
-    sys.exit(libcst.tool.main("codesorter", argv))
+    sys.exit(libcst.tool.main("codesorter", cst_argv))

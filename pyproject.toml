@@ -49,7 +49,6 @@ classifiers = [
   "Typing :: Typed"
 ]
 dependencies = [
-  "click>=8.4.1,<9",
   "libcst>=1.8.6,<2.0.0",
   "pathspec>=1.1.1"
 ]
@@ -123,9 +122,6 @@ builtins-ignorelist = ["id"]
 ban-relative-imports = "all"
 
 [tool.ruff.lint.per-file-ignores]
-"codesorter/cli.py" = [
-  "PLR0913" # the click command naturally takes one parameter per option
-]
 "codesorter/sort_code.py" = [
   "ARG002", # libcst visitor methods must accept original_node/updated_node
   "N802", # libcst visitor methods must use visit_CamelCase / leave_CamelCase
