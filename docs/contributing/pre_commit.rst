@@ -21,9 +21,9 @@ hook so the repository is always sorted by the code on the current branch:
 ***************************
 
 Because the hook uses ``language: system``, it runs the ``codesorter`` executable from
-your environment instead of an isolated one pre-commit manages. CodeSorter then invokes
-``ruff format`` as its formatter (configured in ``.libcst.codemod.yaml``). Both
-``codesorter`` and ``ruff`` must therefore be on ``PATH`` when the hook runs.
+your environment instead of an isolated one pre-commit manages. CodeSorter always
+invokes ``ruff format`` as its formatter, so both ``codesorter`` and ``ruff`` must be on
+``PATH`` when the hook runs.
 
 Install the development environment and the git hook:
 
