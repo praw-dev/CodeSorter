@@ -22,13 +22,13 @@ if TYPE_CHECKING:
 def _build_parser() -> argparse.ArgumentParser:
     """Build the argument parser for the code sorter CLI."""
     parser = argparse.ArgumentParser(
-        prog="codesorter",
         description=(
             "Sort Python code in the specified package or file. This tool analyzes "
             "Python code and sorts classes and functions based on their dependencies "
             "and relationships."
         ),
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+        prog="codesorter",
     )
     parser.add_argument(
         "-c",
@@ -39,8 +39,8 @@ def _build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "-j",
         "--jobs",
-        type=int,
         help="Number of jobs to use when processing files.",
+        type=int,
     )
     parser.add_argument(
         "-s",
@@ -57,11 +57,11 @@ def _build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "-e",
         "--exclude",
-        dest="extra_excludes",
         action="append",
         default=[],
-        metavar="NAME",
+        dest="extra_excludes",
         help="Directory name to skip when walking paths. May be passed multiple times.",
+        metavar="NAME",
     )
     parser.add_argument(
         "--no-default-excludes",
@@ -75,8 +75,8 @@ def _build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument(
         "paths",
-        nargs="*",
         help="Files or directories to sort. Defaults to the current directory.",
+        nargs="*",
     )
     return parser
 
@@ -130,7 +130,7 @@ def _collect_files(
                 files.append(str(path))
             continue
 
-        ignore_specs = _load_gitignore_specs(root=path, excludes=excludes) if honor_gitignore else []
+        ignore_specs = _load_gitignore_specs(excludes=excludes, root=path) if honor_gitignore else []
 
         for candidate in sorted(path.rglob("*.py")):
             relative_parts = candidate.relative_to(path).parts
@@ -148,8 +148,8 @@ def _collect_files(
 
 def _load_gitignore_specs(
     *,
-    root: Path,
     excludes: set[str],
+    root: Path,
 ) -> list[tuple[Path, pathspec.PathSpec[Pattern]]]:
     """Collect (anchor_dir, spec) for every .gitignore at or below root.
 

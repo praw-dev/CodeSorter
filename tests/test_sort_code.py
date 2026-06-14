@@ -117,6 +117,15 @@ class MyClass:
         result = command.transform_module(cst.parse_module(code))
         assert result.code.strip() == ""
 
+    def test_keyword_arguments(self, test_files):
+        """Test that keyword arguments, keyword-only params, and dict keys are sorted."""
+        input_code, expected_code = test_files
+        context = CodemodContext()
+        command = SortCodeCommand(context)
+        result = command.transform_module(cst.parse_module(input_code))
+
+        assert expected_code == result.code
+
     def test_method_body_dependency(self, test_files):
         """Test that a class is sorted after a later class it depends on.
 
@@ -176,6 +185,15 @@ from pathlib import Path
 
     def test_staticmethod(self, test_files):
         """Test that static methods are sorted correctly."""
+        input_code, expected_code = test_files
+        context = CodemodContext()
+        command = SortCodeCommand(context)
+        result = command.transform_module(cst.parse_module(input_code))
+
+        assert expected_code == result.code
+
+    def test_underscore_ordering(self, test_files):
+        """Test that ``_``-prefixed names sort ahead of public names at every level."""
         input_code, expected_code = test_files
         context = CodemodContext()
         command = SortCodeCommand(context)
