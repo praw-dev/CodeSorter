@@ -39,4 +39,4 @@ PLAIN_DECORATOR_PARTS = 1
 
 PROPERTY_DECORATOR_PARTS = 2
 
-__version__ = "0.2.1.dev0"
+__version__ = "0.2.1"
