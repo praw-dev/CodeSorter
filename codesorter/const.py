@@ -1,6 +1,6 @@
 """Package constants and version metadata."""
 
-__version__ = "0.1.0"
+__version__ = "0.1.1.dev0"
 
 DEFAULT_EXCLUDES: tuple[str, ...] = (
     ".bzr",
