@@ -6,11 +6,17 @@ import enum
 import heapq
 from collections import defaultdict
 from enum import auto
+from typing import TYPE_CHECKING, Protocol, TypeVar
 
 import libcst as cst
 from libcst import matchers as m
 from libcst import metadata as md
 from libcst.codemod import CodemodContext, VisitorBasedCodemodCommand
+
+if TYPE_CHECKING:
+    from collections.abc import Callable, Sequence
+
+    from typing_extensions import Self
 
 _PROPERTY_DECORATOR_PARTS = 2
 _PLAIN_DECORATOR_PARTS = 1
@@ -27,6 +33,35 @@ def _gen_unique_name(node: cst.ClassDef | cst.FunctionDef) -> str:
     return ".".join(parts)
 
 
+def _name_sort_key(name: str) -> tuple[bool, str]:
+    """Return an alphabetical sort key that orders ``_``-prefixed names first.
+
+    A plain string sort places ``_`` (and dunders) after capitalized names because the
+    underscore has a higher code point than ``A``-``Z``. Sorting on a leading-underscore
+    flag first keeps private and dunder names grouped ahead of the public ones.
+
+    """
+    return (not name.startswith("_"), name)
+
+
+# The bound is a forward reference so this assignment does not depend on the source
+# position of ``_Commaed`` (which CodeSorter may reorder relative to this statement).
+_CommaT = TypeVar("_CommaT", bound="_Commaed")
+
+
+class _Commaed(Protocol):
+    """A comma-separated element (``Arg``, ``Param``, or dict element) that can be copied."""
+
+    @property
+    def comma(self) -> cst.Comma | cst.MaybeSentinel:
+        """The trailing comma, kept attached to its slot when reordering."""
+        ...
+
+    def with_changes(self, **changes: object) -> Self:
+        """Return a copy of the node with the given fields replaced."""
+        ...
+
+
 class FixtureType(enum.IntEnum):
     """Pytest fixture scopes used as a secondary sort key for fixture methods."""
 
@@ -36,6 +71,108 @@ class FixtureType(enum.IntEnum):
     module_fixture = auto()
     class_fixture = auto()
     function_fixture = auto()
+
+
+class KeywordArgumentSorter(cst.CSTTransformer):
+    """Alphabetically sort keyword arguments, keyword-only parameters, and dict keys.
+
+    In a call, keyword arguments are sorted and ``**`` unpackings moved to the end,
+    while positional arguments and ``*`` unpackings stay put. In a dict literal, only
+    runs of string-keyed entries are sorted, with ``**`` spreads and non-string keys
+    acting as barriers to preserve last-wins merge semantics.
+
+    """
+
+    @staticmethod
+    def _sort_comma_runs(
+        elements: Sequence[_CommaT],
+        sortable: Callable[[_CommaT], bool],
+        key: Callable[[_CommaT], tuple[int, bool, str]],
+    ) -> list[_CommaT]:
+        """Sort each maximal run of sortable comma-separated elements by ``key``.
+
+        Elements for which ``sortable`` returns ``False`` act as barriers that are never
+        moved, preserving the surrounding order. Commas stay attached to their slot so
+        whitespace and any trailing comma are unchanged. The sort is stable, so elements
+        with equal keys keep their relative order.
+
+        """
+        result = list(elements)
+        index = 0
+        while index < len(result):
+            if not sortable(result[index]):
+                index += 1
+                continue
+            end = index
+            while end < len(result) and sortable(result[end]):
+                end += 1
+            run = result[index:end]
+            if len(run) > 1:
+                commas = [element.comma for element in run]
+                ordered = sorted(run, key=key)
+                result[index:end] = [item.with_changes(comma=commas[offset]) for offset, item in enumerate(ordered)]
+            index = end
+        return result
+
+    def leave_Call(self, original_node: cst.Call, updated_node: cst.Call) -> cst.Call:
+        """Sort the keyword arguments of a call.
+
+        ``**`` unpackings are sorted to the end of their run rather than treated as
+        barriers: a call raises ``TypeError`` on any duplicate keyword regardless of
+        order, so moving keyword arguments across a ``**`` cannot change the result.
+        Positional arguments and ``*`` unpackings stay put because their order
+        determines positional binding.
+
+        """
+        return updated_node.with_changes(
+            args=self._sort_comma_runs(
+                updated_node.args,
+                lambda arg: arg.keyword is not None or arg.star == "**",
+                lambda arg: (
+                    (1, *_name_sort_key(""))
+                    if arg.keyword is None
+                    else (0, *_name_sort_key(cst.ensure_type(arg.keyword, cst.Name).value))
+                ),
+            )
+        )
+
+    def leave_Dict(self, original_node: cst.Dict, updated_node: cst.Dict) -> cst.Dict:
+        """Sort the string-keyed elements of a dict literal.
+
+        Unlike a call, ``**`` spreads and non-string keys are barriers, because a dict
+        merges last-wins, so reordering across them would change the resulting value.
+
+        """
+        return updated_node.with_changes(
+            elements=self._sort_comma_runs(
+                updated_node.elements,
+                lambda element: (
+                    isinstance(element, cst.DictElement)
+                    and isinstance(element.key, cst.SimpleString)
+                    and isinstance(element.key.evaluated_value, str)
+                ),
+                lambda element: (
+                    0,
+                    *_name_sort_key(
+                        str(
+                            cst.ensure_type(
+                                cst.ensure_type(element, cst.DictElement).key, cst.SimpleString
+                            ).evaluated_value
+                        )
+                    ),
+                ),
+            )
+        )
+
+    def leave_Parameters(self, original_node: cst.Parameters, updated_node: cst.Parameters) -> cst.Parameters:
+        """Sort the keyword-only parameters of a function definition."""
+        if len(updated_node.kwonly_params) <= 1:
+            return updated_node
+        return updated_node.with_changes(
+            kwonly_params=self._sort_comma_runs(
+                updated_node.kwonly_params, lambda _param: True, lambda param: (0, *_name_sort_key(param.name.value))
+            )
+        )
 
 
 class MethodType(enum.IntEnum):
@@ -60,25 +197,6 @@ class PropertyType(enum.IntEnum):
     getter = auto()
     setter = auto()
     deleter = auto()
-
-
-class SortingTransformer(cst.CSTTransformer):
-    """Apply a precomputed replacements map to swap nodes during a traversal."""
-
-    def __init__(self, replacements: dict[str, cst.ClassDef | cst.FunctionDef]) -> None:
-        """Store the replacements keyed by unique node name."""
-        self.replacements = replacements
-        super().__init__()
-
-    def on_leave(
-        self,
-        original_node: cst.CSTNode,
-        updated_node: cst.CSTNode,
-    ) -> cst.CSTNode:
-        """Swap matching class or function nodes for their replacement."""
-        if isinstance(original_node, (cst.ClassDef, cst.FunctionDef)):
-            return self.replacements.get(_gen_unique_name(original_node), updated_node)
-        return updated_node
 
 
 class SortCodeCommand(VisitorBasedCodemodCommand, m.MatcherDecoratableTransformer):
@@ -158,8 +276,8 @@ class SortCodeCommand(VisitorBasedCodemodCommand, m.MatcherDecoratableTransforme
                 node,
                 m.SaveMatchedNode(
                     m.Name(
-                        value=m.DoesNotMatch(node.name.value),
                         metadata=m.MatchMetadataIfTrue(md.ScopeProvider, _outer_scope),
+                        value=m.DoesNotMatch(node.name.value),
                     ),
                     "name",
                 ),
@@ -220,7 +338,7 @@ class SortCodeCommand(VisitorBasedCodemodCommand, m.MatcherDecoratableTransforme
     def _node_sort_key(
         self,
         node: cst.ClassDef | cst.FunctionDef,
-    ) -> tuple[bool, MethodType, FixtureType, str, PropertyType]:
+    ) -> tuple[bool, MethodType, FixtureType, bool, str, PropertyType]:
         is_class = self.matches(node, m.ClassDef())
         method_type = MethodType.na
         fixture_type = FixtureType.na
@@ -289,7 +407,7 @@ class SortCodeCommand(VisitorBasedCodemodCommand, m.MatcherDecoratableTransforme
             not is_class if self.in_class else is_class,
             method_type,
             fixture_type,
-            node_name,
+            *_name_sort_key(node_name),
             property_type,
         )
 
@@ -357,6 +475,7 @@ class SortCodeCommand(VisitorBasedCodemodCommand, m.MatcherDecoratableTransforme
         updated_node = cst.ensure_type(
             updated_node.visit(SortingTransformer(self._get_replacements(items))), cst.Module
         )
+        updated_node = cst.ensure_type(updated_node.visit(KeywordArgumentSorter()), cst.Module)
         self.original_nodes = {}
         return updated_node
 
@@ -374,3 +493,22 @@ class SortCodeCommand(VisitorBasedCodemodCommand, m.MatcherDecoratableTransforme
         self.original_nodes[unique_name] = node
         self._resolve_dependents(node)
         return False
+
+
+class SortingTransformer(cst.CSTTransformer):
+    """Apply a precomputed replacements map to swap nodes during a traversal."""
+
+    def __init__(self, replacements: dict[str, cst.ClassDef | cst.FunctionDef]) -> None:
+        """Store the replacements keyed by unique node name."""
+        self.replacements = replacements
+        super().__init__()
+
+    def on_leave(
+        self,
+        original_node: cst.CSTNode,
+        updated_node: cst.CSTNode,
+    ) -> cst.CSTNode:
+        """Swap matching class or function nodes for their replacement."""
+        if isinstance(original_node, (cst.ClassDef, cst.FunctionDef)):
+            return self.replacements.get(_gen_unique_name(original_node), updated_node)
+        return updated_node

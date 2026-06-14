@@ -1,7 +1,7 @@
 import os
 
 # Global variables that classes depend on
-DATABASE_CONFIG = {"host": "localhost", "port": 5432, "database": "test_db"}
+DATABASE_CONFIG = {"database": "test_db", "host": "localhost", "port": 5432}
 
 API_ENDPOINTS = ["/api/users", "/api/posts", "/api/comments"]
 
@@ -47,7 +47,7 @@ class ConfigManager:
 
     def get_all_config(self):
         """Get all configuration."""
-        return {"database": self.database_config, "endpoints": self.api_endpoints, "debug": self.debug_mode}
+        return {"database": self.database_config, "debug": self.debug_mode, "endpoints": self.api_endpoints}
 
     def update_database_config(self, new_config):
         """Update database configuration."""
