@@ -8,6 +8,14 @@ codesorter follows `semantic versioning <https://semver.org/>`_.
  Unreleased
 ************
 
+**Fixed**
+
+- Treat a name used inside a module- or class-level comprehension as a real dependency.
+  Such a comprehension runs eagerly when the definition executes, so an assignment like
+  ``values = {key: build(key) for key in keys}`` now sorts after the ``build`` function
+  it calls instead of ahead of it (which raised ``NameError``). A comprehension inside a
+  function body stays deferred and still imposes no ordering.
+
 ********************
  0.2.0 (2026/06/14)
 ********************

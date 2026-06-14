@@ -116,6 +116,22 @@ class MyClass:
         except SyntaxError as e:
             pytest.fail(f"Codemod produced invalid Python syntax: {e}")
 
+    def test_comprehension_dependency(self, test_files):
+        """Test that a name used in a module-level comprehension is a real dependency.
+
+        A module-level comprehension runs eagerly when the module executes, so an
+        assignment built from one must follow the function it calls (the reference lives
+        in a comprehension scope, which previously hid the dependency). A comprehension
+        inside a function body stays deferred and imposes no ordering.
+
+        """
+        input_code, expected_code = test_files
+        context = CodemodContext()
+        command = SortCodeCommand(context)
+        result = command.transform_module(cst.parse_module(input_code))
+
+        assert expected_code == result.code
+
     def test_comprehensive(self, test_files):
         """Test comprehensive scenario with pytest fixtures, custom decorators, inheritance, and global dependencies."""
         input_code, expected_code = test_files

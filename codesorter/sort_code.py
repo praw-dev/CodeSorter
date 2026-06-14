@@ -294,9 +294,14 @@ class SortCodeCommand(VisitorBasedCodemodCommand, m.MatcherDecoratableTransforme
         if isinstance(meta, (md.ClassScope, md.GlobalScope)):
 
             def _outer_scope(scope: object) -> bool:
-                return isinstance(scope, (md.ClassScope, md.GlobalScope)) or (
-                    isinstance(scope, md.ClassScope) and scope.parent != meta
-                )
+                # A comprehension at module or class level runs eagerly when the
+                # definition executes, so a name used inside it is a real dependency.
+                # Walk out through any comprehension scopes; a function scope in the
+                # chain means the reference is deferred (a lambda or method body) and is
+                # not a definition-time dependency.
+                while isinstance(scope, md.ComprehensionScope):
+                    scope = scope.parent
+                return isinstance(scope, (md.ClassScope, md.GlobalScope))
 
             for found in self.extractall(
                 node,
