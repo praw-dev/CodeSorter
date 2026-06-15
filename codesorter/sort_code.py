@@ -16,6 +16,7 @@ from libcst.codemod import CodemodContext, VisitorBasedCodemodCommand
 
 from codesorter.const import (
     ORDER_SENSITIVE_BASES,
+    ORDER_SENSITIVE_CALLS,
     ORDER_SENSITIVE_DECORATORS,
     PLAIN_DECORATOR_PARTS,
     PROPERTY_DECORATOR_PARTS,
@@ -70,6 +71,22 @@ class KeywordArgumentSorter(cst.CSTTransformer):
     """
 
     @staticmethod
+    def _called_name(func: cst.BaseExpression) -> str | None:
+        """Return the trailing name of a call target, or ``None`` if it is not a name.
+
+        Resolves both a bare ``OrderedDict`` (``Name``) and a dotted
+        ``collections.OrderedDict`` (``Attribute``) to ``"OrderedDict"``. An import
+        alias is not followed, matching the suffix-based name matching used elsewhere
+        for order-sensitive classes.
+
+        """
+        if isinstance(func, cst.Attribute):
+            return func.attr.value
+        if isinstance(func, cst.Name):
+            return func.value
+        return None
+
+    @staticmethod
     def _sort_comma_runs(
         elements: Sequence[_CommaT],
         sortable: Callable[[_CommaT], bool],
@@ -107,9 +124,13 @@ class KeywordArgumentSorter(cst.CSTTransformer):
         barriers: a call raises ``TypeError`` on any duplicate keyword regardless of
         order, so moving keyword arguments across a ``**`` cannot change the result.
         Positional arguments and ``*`` unpackings stay put because their order
-        determines positional binding.
+        determines positional binding. Calls to an order-sensitive callable such as
+        ``OrderedDict`` are left untouched, since their keyword-argument order is the
+        iteration order and reordering it would change the resulting value.
 
         """
+        if self._called_name(updated_node.func) in ORDER_SENSITIVE_CALLS:
+            return updated_node
         return updated_node.with_changes(
             args=self._sort_comma_runs(
                 updated_node.args,

@@ -24,7 +24,8 @@ CodeSorter is a LibCST codemod that automatically sorts and organizes Python cod
 - **Constant Grouping**: Orders each scope as constants, then classes, then functions,
   sorting constants by dependency while preserving enum and dataclass field order
 - **Keyword Sorting**: Alphabetizes keyword arguments in calls, keyword-only parameters,
-  and dict string keys, while preserving ``*``/``**`` unpacking semantics
+  and dict string keys, while preserving ``*``/``**`` unpacking semantics and the
+  keyword-argument order of order-sensitive callables such as ``OrderedDict``
 - **Pytest Integration**: Special handling for pytest fixtures with proper scope
   ordering
 - **CLI Interface**: Simple command-line interface for easy integration

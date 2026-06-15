@@ -17,6 +17,11 @@ codesorter follows `semantic versioning <https://semver.org/>`_.
   raised ``NameError`` at import. The runtime references reachable through a called
   class or function (transitively) are now treated as dependencies of the calling
   assignment.
+- Do not sort the keyword arguments of an ``OrderedDict`` call. ``OrderedDict(b=2,
+  a=1)`` iterates in argument order and is a distinct value from ``OrderedDict(a=1,
+  b=2)``, so reordering its keyword arguments changed the resulting object. Calls to
+  ``OrderedDict`` (bare or dotted, such as ``collections.OrderedDict``) are now left
+  untouched.
 
 ********************
  0.2.7 (2026/06/15)

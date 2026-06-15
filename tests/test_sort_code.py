@@ -309,6 +309,15 @@ from pathlib import Path
 
         assert expected_code == result.code
 
+    def test_order_sensitive_calls(self, test_files):
+        """Test that OrderedDict keeps its keyword-argument order while other calls are sorted."""
+        input_code, expected_code = test_files
+        context = CodemodContext()
+        command = SortCodeCommand(context)
+        result = command.transform_module(cst.parse_module(input_code))
+
+        assert expected_code == result.code
+
     def test_property(self, test_files):
         """Test that properties are sorted correctly."""
         input_code, expected_code = test_files

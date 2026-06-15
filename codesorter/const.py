@@ -34,6 +34,10 @@ ORDER_SENSITIVE_BASES: frozenset[str] = frozenset({
     "NamedTuple",
     "TypedDict",
 })
+# Callables whose keyword-argument order is semantically significant, so their calls must
+# not have keyword arguments reordered. ``OrderedDict(a=1, b=2)`` iterates in argument order,
+# and ``OrderedDict(b=2, a=1)`` is a distinct (unequal) value, so the order must be preserved.
+ORDER_SENSITIVE_CALLS: frozenset[str] = frozenset({"OrderedDict"})
 ORDER_SENSITIVE_DECORATORS: frozenset[str] = frozenset({"dataclass", "define", "frozen", "mutable", "attrs"})
 PLAIN_DECORATOR_PARTS = 1
 
