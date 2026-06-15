@@ -8,6 +8,10 @@ codesorter follows `semantic versioning <https://semver.org/>`_.
  Unreleased
 ************
 
+********************
+ 0.2.7 (2026/06/15)
+********************
+
 **Fixed**
 
 - Do not treat a class's own attribute as a dependency on a same-named outer definition.
