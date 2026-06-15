@@ -4,6 +4,10 @@
 
 codesorter follows `semantic versioning <https://semver.org/>`_.
 
+************
+ Unreleased
+************
+
 ********************
  0.2.7 (2026/06/15)
 ********************
