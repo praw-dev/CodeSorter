@@ -8,6 +8,16 @@ codesorter follows `semantic versioning <https://semver.org/>`_.
  Unreleased
 ************
 
+**Fixed**
+
+- Keep a module-level assignment that calls a local definition after the names that call
+  needs at runtime. ``APP = App()`` only references ``App`` syntactically, but
+  instantiating it runs ``App.__init__``, which may read a module-level function defined
+  later in the file. Such an assignment was previously hoisted above that function and
+  raised ``NameError`` at import. The runtime references reachable through a called
+  class or function (transitively) are now treated as dependencies of the calling
+  assignment.
+
 ********************
  0.2.7 (2026/06/15)
 ********************

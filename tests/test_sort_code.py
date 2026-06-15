@@ -327,6 +327,23 @@ from pathlib import Path
 
         assert expected_code == result.code
 
+    def test_runtime_call_dependency(self, test_files):
+        """Test that an assignment calling a class stays after names the call needs at runtime.
+
+        ``SERVER = Server()`` only references ``Server`` syntactically, but
+        instantiating it runs ``Server.__init__``, which reads the module-level
+        ``on_start``. ``on_start`` is a function, which by category sorts after the
+        assignment, so the topological sort must keep the assignment after it rather
+        than hoisting it (which would raise ``NameError`` at import).
+
+        """
+        input_code, expected_code = test_files
+        context = CodemodContext()
+        command = SortCodeCommand(context)
+        result = command.transform_module(cst.parse_module(input_code))
+
+        assert expected_code == result.code
+
     def test_staticmethod(self, test_files):
         """Test that static methods are sorted correctly."""
         input_code, expected_code = test_files
