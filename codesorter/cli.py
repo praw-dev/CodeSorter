@@ -93,7 +93,7 @@ def _check_files(*, files: list[str]) -> int:
             continue
         try:
             new_tree = SortCodeCommand(CodemodContext()).transform_module(cst.parse_module(source))
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:  # ruff:ignore[blind-except]
             sys.stderr.write(f"{path}: transform error: {exc}\n")
             failed.append(path)
             continue

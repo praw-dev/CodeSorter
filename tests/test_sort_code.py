@@ -225,8 +225,8 @@ class MyClass:
             try:
                 code = compile(path.read_text(encoding="utf-8"), str(path), "exec")
                 with redirect_stdout(captured), redirect_stderr(captured):
-                    exec(code, {"__name__": "__fixture__"})  # noqa: S102
-            except Exception as error:  # noqa: BLE001
+                    exec(code, {"__name__": "__fixture__"})  # ruff:ignore[exec-builtin]
+            except Exception as error:  # ruff:ignore[blind-except]
                 failures.append(f"{path.name}: {type(error).__name__}: {error}")
                 continue
             if captured.getvalue():
