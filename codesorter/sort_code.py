@@ -365,7 +365,7 @@ class SortCodeCommand(VisitorBasedCodemodCommand, m.MatcherDecoratableTransforme
             for callee in callees:
                 self.dependencies[name].update(runtime.get(callee, ()))
 
-    def _get_dependencies(  # noqa: C901
+    def _get_dependencies(  # ruff:ignore[complex-structure]
         self,
         node: _Sortable,
     ) -> tuple[list[str], md.Scope]:
@@ -490,7 +490,7 @@ class SortCodeCommand(VisitorBasedCodemodCommand, m.MatcherDecoratableTransforme
                 return True
         return False
 
-    def _node_sort_key(  # noqa: C901
+    def _node_sort_key(  # ruff:ignore[complex-structure]
         self,
         node: _Sortable,
     ) -> tuple[int, int, MethodType, FixtureType, bool, str, PropertyType]:
