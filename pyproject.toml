@@ -5,10 +5,10 @@ requires = ["hatchling"]
 [dependency-groups]
 dev = [
   "tox-uv>=1.35.2",
-  {include-group = "docs"},
-  {include-group = "lint"},
-  {include-group = "test"},
-  {include-group = "type"}
+  { include-group = "docs" },
+  { include-group = "lint" },
+  { include-group = "test" },
+  { include-group = "type" }
 ]
 docs = [
   "furo>=2024.8.6",
@@ -24,11 +24,11 @@ test = [
 ]
 type = [
   "pyright>=1.1.410",
-  {include-group = "test"}
+  { include-group = "test" }
 ]
 
 [project]
-authors = [{email = "lilspazjoekp@gmail.com", name = "Joel Payne"}]
+authors = [{ email = "lilspazjoekp@gmail.com", name = "Joel Payne" }]
 classifiers = [
   "Development Status :: 4 - Beta",
   "Environment :: Console",
@@ -55,10 +55,10 @@ dependencies = [
 description = "A Python codemod that sorts and organizes code in your files."
 dynamic = ["version"]
 keywords = ["codemod", "codesorter", "libcst", "sort"]
-license = {file = "LICENSE.txt"}
+license = { file = "LICENSE.txt" }
 maintainers = [
-  {email = "lilspazjoekp@gmail.com", name = "Joel Payne"},
-  {email = "bbzbryce@gmail.com", name = "Bryce Boe"}
+  { email = "lilspazjoekp@gmail.com", name = "Joel Payne" },
+  { email = "bbzbryce@gmail.com", name = "Bryce Boe" }
 ]
 name = "codesorter"
 readme = "README.rst"
